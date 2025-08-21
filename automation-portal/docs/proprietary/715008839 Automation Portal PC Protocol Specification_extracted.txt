@@ -1,0 +1,717 @@
+
+--- Page 1 ---
+Automation Portal
+PC Protocol Specification
+715008839
+Version 00Copyright © Waters Corporation 2023
+All rights reserved
+--- Page 2 ---
+General information
+Copyright notice
+© 2023 WATERS CORPORATION. PRINTED IN THE UNITED STATES OF AMERICA AND IN
+IRELAND. ALL RIGHTS RESERVED. THIS DOCUMENT OR PARTS THEREOF MAY NOT BE
+REPRODUCED IN ANY FORM WITHOUT THE WRITTEN PERMISSION OF THE PUBLISHER.
+The information in this document is subject to change without notice and should not be construed
+as a commitment by Waters Corporation. Waters Corporation assumes no responsibility for
+any errors that may appear in this document. This document is believed to be complete and
+accurate at the time of publication. In no event shall Waters Corporation be liable for incidental or
+consequential damages in connection with, or arising from, its use. For the most recent revision
+of this document, consult the Waters website ( www.waters.com ).
+Trademarks
+Waters ™ is a trademark of Waters Corporation.
+Waters Quality Parts ™ is a trademark of Waters Corporation.
+All other trademarks are property of their respective owners.
+Customer comments
+We seriously consider every customer comment we receive. Help us better understand what you
+expect from our documentation so that we can continuously improve its accuracy and usability.
+To report any errors that you encounter in this document or to suggest ideas for otherwise
+improving it, reach us at tech_comm@waters.com .
+Contacting Waters
+Contact Waters with technical questions regarding the use, transportation, removal, or disposal of
+any Waters product. You can reach us through the Internet, telephone, fax, or conventional mail.
+Contact method Information
+www.waters.com The Waters website includes contact
+information for Waters locations worldwide.
+July 26, 2023, 715008839 Ver. 00
+Page ii
+--- Page 3 ---
+Contact method Information
+iRequest iRequest is a secure Web service form that
+allows you to request support and service
+for Waters instruments and software or to
+schedule a planned service activity. These
+types of support and services may be included
+as part of your maintenance plan or support
+plan. You may be charged for the requested
+service if you do not have appropriate plan
+coverage for your product.
+Note:  In areas managed by authorized
+distributors, iRequest may not be available.
+Contact your local distributor for more
+information.
+Local office contact information For worldwide locations, telephone, fax, and
+conventional mail information is available at the
+Local Offices  website.
+Corporate contact information Waters Corporation
+Global Support Services
+34 Maple Street
+Milford, MA 01757
+USA
+From the USA or Canada, phone
+800-252-4752 or fax 508-872-1990.
+July 26, 2023, 715008839 Ver. 00
+Page iii
+--- Page 4 ---
+Table of contents
+General information........................................................................................................ii
+Copyright notice......................................................................................................................................ii
+Trademarks.............................................................................................................................................ii
+Customer comments...............................................................................................................................ii
+Contacting Waters.................................................................................................................................. ii
+1 Introduction..................................................................................................................6
+1.1 Purpose............................................................................................................................................6
+1.2 Scope............................................................................................................................................... 6
+1.3 Audience.......................................................................................................................................... 6
+1.4 Abbreviations and definitions........................................................................................................... 6
+2 PC command interface................................................................................................8
+2.1 Communication characteristics........................................................................................................ 8
+2.2 Protocol specification....................................................................................................................... 9
+2.3 Examples........................................................................................................................................11
+2.3.1 First correct command.......................................................................................................... 11
+2.3.2 Second correct command..................................................................................................... 11
+2.3.3 Third correct command with argument..................................................................................11
+2.3.4 Invalid command...................................................................................................................11
+2.3.5 Command results in an error................................................................................................ 12
+2.4 Available responses....................................................................................................................... 12
+2.4.1 Data elements.......................................................................................................................13
+2.5 Available commands...................................................................................................................... 14
+2.5.1 Data elements.......................................................................................................................16
+3 Appendices................................................................................................................ 20
+3.1 System modes................................................................................................................................20
+July 26, 2023, 715008839 Ver. 00
+Page iv
+--- Page 5 ---
+3.2 Behavior......................................................................................................................................... 20
+3.2.1 Initialization........................................................................................................................... 22
+3.2.2 Extract...................................................................................................................................24
+3.2.3 Insert.....................................................................................................................................26
+July 26, 2023, 715008839 Ver. 00
+Page v
+--- Page 6 ---
+1 Introduction
+1.1 Purpose
+This specification describes the interface between the PC and the Waters Automation Portal
+(WAP) system and complies with Automation Portal firmware version 2.02.
+To clarify the interaction with the system components, the conduct of the system is stated in 3.2
+Behavior .
+1.2 Scope
+The scope of this document is the communication between the Waters Automation Portal and the
+attached PC.
+1.3 Audience
+This document is intended for developers of interfaces between software packages and the
+Automation Portal.
+1.4 Abbreviations and definitions
+Table 1–1: PC Protocol specification abbreviations and definitions
+Term Definition
+CR Carriage return
+Drawer The part of the portal that moves in and out of the sample manager. It is
+capable of carrying a tray.
+FW Firmware
+LED Light-emitting diode
+LF Line feed
+PC Personal computer
+SM Sample manager
+Tray A well plate that is placed on a drawer.
+July 26, 2023, 715008839 Ver. 00
+Page 6
+--- Page 7 ---
+Table 1–1: PC Protocol specification abbreviations and definitions (continued)
+Term Definition
+WAP Waters Automation Portal
+July 26, 2023, 715008839 Ver. 00
+Page 7
+--- Page 8 ---
+2 PC command interface
+This section describes the interface between the PC and the Waters Automation Portal (WAP)
+system.
+2.1 Communication characteristics
+The RS232 serial communication between WAP and PC has the following characteristics:
+Table 2–1: WAP and PC communication characteristics
+Item Value Description
+Speed 38400 Line speed in baud (that is, pulses per
+second)
+Parity 0 Number of parity bits
+Data bits 8 Number of data bits
+Stop bits 1 Number of stop bits
+Flow control None -
+July 26, 2023, 715008839 Ver. 00
+Page 8
+--- Page 9 ---
+2.2 Protocol specification
+Figure 2–1: WAP and PC interface
+The PC initiates a command by sending a single command_request string. The WAP system
+always responds with:
+•command_acknowledge  string
+•command_result  string
+Each communicated string can consist of one or more of the following characters:
+• 0 through 9 (inclusive)
+• a through z (inclusive)
+• A through Z (inclusive)
+• ( open parenthesis
+• ) close parenthesis
+• , comma
+• space
+Each string is terminated by a Carriage Return (CR; value 13 decimal) and Line Feed (LF; value
+10 decimal) character.
+A command_request  string consists of:
+•command_name : either a common or a mode-specific command (explained in next section)
+• command arguments (optional)
+July 26, 2023, 715008839 Ver. 00
+Page 9
+--- Page 10 ---
+• (, open parenthesis
+•arg_1 , first argument
+•, arg_*  (optional) , subsequent arguments
+• ), close parenthesis
+A command_acknowledge  string consists of:
+• Received (
+•command_sequence : sequence of executed command ranging from 1 through 255
+(inclusive)
+• , comma character
+•command_name : either a common or a mode-specific command (explained in next section)
+• ), close parenthesis
+A command_result  string is either:
+•command_completed
+•command_error
+A command_completed  string is:
+• Completed (
+•command_sequence : sequence of executed command ranging from 1 through 255
+(inclusive)
+• , comma character
+•command_name : either a common or a mode-specific command (explained in next section)
+• , result_* (optional), subsequent results
+• ), close parenthesis
+A command_error  string is:
+• Error (
+•command_sequence : sequence of executed command ranging from 1 through 255
+(inclusive) or 0 (if the command is unknown)
+• , comma character
+•command_name : either a common or a mode-specific command (explained in next section)
+• , comma character
+•error_number : number of the error; zero means no error. The errors are explained in the
+release notes of the firmware.
+• , comma character
+•error_description : descriptive text of the error
+July 26, 2023, 715008839 Ver. 00
+Page 10
+--- Page 11 ---
+•error_state : optional system or movement state when the error occurred
+• ), close parenthesis
+Note:  After an error, use the GetStatus  command to determine if the system needs to be re-
+initialized using the Initialize command. If the system is in ERROR  state, it should be re-initialized.
+2.3 Examples
+2.3.1 First correct command
+ReportVersion 
+        Received(1,ReportVersion) 
+        Completed(1,ReportVersion,NO-SERIAL#,0250.600,03,0103)
+The first command responded command sequence number 1 on both results. The completed
+string contains comma-separated results. In this example, there is no serial number stored in
+PCBA 0250.600, rev 03. The FW has version number 0103 (that is, release 1.03).
+2.3.2 Second correct command
+Initialize 
+        Received(2,Initialize) 
+        Completed(2,Initialize)
+The second command responded command sequence number 2 on both responses.
+2.3.3 Third correct command with argument
+Extract(0)
+        Received(3,Extract)
+        Completed(3,Extract,TrayDetected)
+The third command responded command sequence number 3 on both responses.
+2.3.4 Invalid command
+GestS
+      Error(0,GestS,1,Unknown command)
+July 26, 2023, 715008839 Ver. 00
+Page 11
+--- Page 12 ---
+An invalid command responds a command sequence of 0 and the received invalid command
+name with error code 1 (being an unknown command).
+2.3.5 Command results in an error
+Extract(0) 
+        Received(3,Extract) 
+        Error(3,Extract,20,Drawer present when starting extraction)
+The extract command failed because the drawer was present when starting the extraction. The
+third argument in the error response is the error number. The fourth argument is a shorthand
+description of the error.
+2.4 Available responses
+Response name Argument(s) Description
+Completed seq_nr
+cmd_name
+drawer_tray_statusThe system is responding that
+the command has successfully
+finished. Note that only the Extract
+command can bring a response of
+drawer_tray_status . The state of
+the drawer and/or the tray can always
+be obtained via the GetStatus
+command.
+Error “0”
+cmd_name
+error_code
+error_descrThe system is responding that
+command execution has failed. The
+description of the error should indicate
+the cause of the problem. The
+last movement command and its
+state can always be obtained via
+the GetStatus  command. Use the
+GetStatus command to determine if a
+call to Initialize is needed to reset the
+error (in which case the operational
+state will change to ERROR).
+Received seq_nr
+cmd_nameThe system has accepted the
+command and provides a sequence
+number that indicates that the
+corresponding Completed  or Error
+will follow shortly.
+July 26, 2023, 715008839 Ver. 00
+Page 12
+--- Page 13 ---
+2.4.1 Data elements
+Item Size Value Description
+cmd_name String “Extract”
+“Initialize”
+“Insert”
+“ReportVersion”
+“ResetSystem”Name of the
+command
+drawer_tray_status String “DrawerAndTray”
+“DrawerNoTray”
+“NoDrawerNoTray”
+“TrayWithoutDrawer”Drawer and
+tray status
+error_code Byte 1 till 24 (incl) Number of
+the error
+error_descr String "Unknown command" 1
+"Bad command argument" 2
+"Unknown error" 3
+"Unavailable command for this 
+system mode"4
+"Maximum size of a command is 
+exceeded"5
+"Sample manager communication 
+problem"6
+"Sample manager is busy" 7
+"Sample manager was not in 
+idle state"8
+"Both door sensors are active" 9
+"Door movement problem while 
+opening"10
+"Door movement problem while 
+closing"11
+"Feeder calibration failure" 12
+"Feeder movement problem 
+while expanding"13
+"Feeder movement problem 
+while retracting"    14
+"Invalid tray number" 15
+"Drawer and/or tray detection 
+failure"16
+July 26, 2023, 715008839 Ver. 00
+Page 13
+--- Page 14 ---
+Item Size Value Description
+"No drawer and no tray 
+detected at retraction"17
+"Door did not move when 
+initializing"18
+"Drawer and tray present when 
+start extraction"19
+"Drawer present when start 
+extraction"20
+"Picked up nothing during 
+extraction"21
+"No drawer or tray present at 
+start insertion"22
+"Drawer present after 
+insertion"23
+"Drawer and tray present 
+after insertion"24
+"Feeder motor controller 
+overtemperature"25
+"Door motor controller 
+overtemperature"26
+"Insert: Already drawer 
+present at SM position"27
+"Extract: No drawer present 
+at SM position"28
+"SM rotated to an incorrect 
+angle"29
+"Timeout on PC command" 30
+seq_nr Byte From 1 till 255 (incl) Sequence
+number of the
+command
+2.5 Available commands
+The following table shows the commands that can be used:
+July 26, 2023, 715008839 Ver. 00
+Page 14
+--- Page 15 ---
+Table 2–2: Available commands
+Command name Argument(s) Returns Description
+Extract tray_positio
+ntray_status Extract a drawer from
+sample manager tray
+position (0 or 1) after
+successful initialization
+(refer to Extract (Page
+24)).
+GetStatus - system_mode
+move_cmd
+move_state
+drawer_tray_status
+door_status
+feeder_status
+ip_address
+mac_addressRetrieves the mode
+(refer to System modes
+(Page 20) ) and
+movement state of
+the system followed
+by the sensor status
+and configured network
+along with hardware
+MAC address.
+Note:  Personal
+computer should use
+GetStatus directly after
+portal confirms the
+received command to
+check if the arguments
+are also received
+correctly.
+Insert tray_positio
+n- Insert a drawer into the
+sample manager tray
+position (0 or 1) after
+successful initialization
+(refer to Insert (Page
+26)).
+Initialize - Rotary_tray_position_st
+atusAfter starting up or
+facing an error, switch
+to operational mode by
+initializing the system
+components (refer to
+Initialization (Page 22) ).
+ReportVersion - version_info Retrieve the system's
+version information.
+ResetSystem - - Resets the system after
+responding “Completed”.
+July 26, 2023, 715008839 Ver. 00
+Page 15
+--- Page 16 ---
+2.5.1 Data elements
+Table 2–3: Available command data elements
+Item Size Value Description
+door_status String "DoorBothSensors"
+"DoorIntermediate"
+"DoorOpened"
+“DoorClosed”Description of the door
+status: Note that
+“DoorBothSensors"
+is physically impossible and
+will cause a fatal problem.
+drawer_tray_s
+tatusString “DrawerAndTray”
+“DrawerOnly”
+“NoDrawerNoTray”
+“TrayWithoutDrawer”Drawer and tray status: Note
+that
+“TrayWithoutDrawer”
+is physically impossible and
+will cause a fatal problem.
+extract_state String "Idle"
+"[1/9]WaitingForSmIdle at 
+start"
+"[2/9]Sending 
+pretransfercommands
+to SM"
+"[3/9]WaitingForSmIdle"
+"[4/9]OpeningDoor"
+"[5/9]ExpandingFeeder"
+"[6/9]RetractingFeeder"
+"[7/9]ClosingDoor"
+"[8/9]Sending 
+posttransfercommands
+to SM"
+"[9/9]WaitingForSmIdle at 
+end"
+“ERROR”Status of the Extract
+command.
+feeder_status String "FeederFullyInSM"
+"FeederIntermediate"
+"FeederNotCalibrated"
+“FeederFullyRetracted”Status of the Chain feeder.
+initialize_st
+ateString "Idle"
+"[1/17] Waiting for SM idle 
+at
+start";Status of the Initialize
+command.
+July 26, 2023, 715008839 Ver. 00
+Page 16
+--- Page 17 ---
+Table 2–3: Available command data elements (continued)
+Item Size Value Description
+"[2/17] Sending pre-transfer
+commands";
+"[3/17]WaitForSmIdle";
+"[4/17]OpeningDoor";
+"[5/17]RetractFeeder";"[6/17
+]SettimgSmToReferencePositi
+on";
+"[6b/
+17]WaitForSMIdleReference";
+"[7/17]RetrievingSmPosition";
+"[8/17]Rotate SM carrousel 
+for
+insertion";
+"[9/17]Expand feeder, detect
+tray";
+"[10/17]Expand feeder, detect
+drawer";
+"[11/17]Expand feeder";
+"[12/17]Rotate SM to release 
+pos";
+"[13/17]Retract feeder";
+"[14/17]Retract feeder, 
+drawer
+detect";
+"[15/17]ClosingDoor";
+"[16/17] Sending post-
+transfer
+commands";
+"[17/17] Waiting for SM idle 
+at
+end";
+“ERROR”
+insert_state String "Idle"
+"[1/12]WaitingForSmIdle at
+start";
+"[2/12]Send pre-transfer 
+commands
+to SM";
+"[3/12]WaitingForSmIdlemoved_
+to_reference_point";
+"[4/12]OpeningDoor";
+"[5/12]ExpandingFeeder";Status of the Insert
+command.
+July 26, 2023, 715008839 Ver. 00
+Page 17
+--- Page 18 ---
+Table 2–3: Available command data elements (continued)
+Item Size Value Description
+"[6/12]HomingZaxisRelPos";
+"[7/12]RotatingTrayToReleaseP
+osit
+ion";
+"[8/12]WaitingForSmIdlemoved_
+to_release_position";
+"[9/12]RetractingFeeder";
+"[10/12]ClosingDoor";
+"[11/12]Send post-transfer
+commands to SM";
+"[12/12]WaitingforSmIdle at 
+end";
+"ERROR"
+ip_address String “D:D:D:D” Internet protocol address
+where D is a number from
+0 through 255 (inclusive) or
+"NO-DHCP-OBTAINED" if no
+connection with the DHCP
+server could be established.
+mac_address String “HH:HH:HH:HH:HH:HH” Media Access Control
+address where HH is a
+hexadecimal number from 0
+through 9 (inclusive) or A
+through F (inclusive). If HH
+equals FF, no MAC address
+is stored.
+move_cmd String “NoMoveCmd”
+“Initialize”
+“Extract(0)”
+“Extract(1)”
+“Insert(0)”
+“Insert(1)”Last movement command.
+move_state String "NoMovement"
+initialize_state
+extract_state
+insert_state
+"SERVICE-Idle"
+"FW_UPGRADE=Idle"Last movement state
+(depends on the current
+system mode).
+rotary_tray_p
+osition_statu
+sString “DrawerAndTray”
+“DrawerOnly”Status of SM rotary tray
+position. (See Initialization
+(Page 22) )
+July 26, 2023, 715008839 Ver. 00
+Page 18
+--- Page 19 ---
+Table 2–3: Available command data elements (continued)
+Item Size Value Description
+“Empty”
+“Unknown”
+system_mode String “UNINIT”
+“OPERATIONAL”
+“SERVICE”
+“FW-UPGRADE”
+“ERROR”System mode (see System
+modes (Page 20)  for more
+details).
+tray_position 1 0
+1Position of the tray in the SM.
+Extract(1) is Drawer 1 and
+Extract(0) is Drawer 2
+version_info String “serial_nr”
+“0250.600”
+“03”
+“0200”Version information strings
+for this hardware and
+firmware revision (0200
+means FW version 2.0).
+serial_nr  is 10 digits or
+“NO_SERIAL#" .
+July 26, 2023, 715008839 Ver. 00
+Page 19
+--- Page 20 ---
+3 Appendices
+3.1 System modes
+The WAP maintains the following system modes and transitions:
+•UNINIT : The system is powered-on or has been reset. This mode is left via a successful
+Initialize command or via the Web interface ( SERVICE  and FW-UPGRADE ).
+•OPERATIONAL : The system has successfully been initialized and waits for an Extract or
+Insert command. When these commands fail, the system enters the ERROR  mode.
+•ERROR : The system detected a problem while executing an Initialize, Extract, or Insert
+command. The system leaves this mode only via a successful Initialize command.
+•SERVICE : The system shows a Web page with its configuration and a button to calibrate and
+reset the system via a link in the Web page. The system can re-enter the UNINIT  mode.
+•FW-UPGRADE : The system shows a Web page to upgrade the firmware and a button to
+reset the system via a link in the Web page. The system can re-enter the UNINIT  mode.
+3.2 Behavior
+The WAP system interacts with the sample manager (SM), drives feeder and door motors, and
+reads sensors in order to move a drawer tray to and from the sample SM. The firmware has the
+following context:
+July 26, 2023, 715008839 Ver. 00
+Page 20
+--- Page 21 ---
+Figure 3–1: WAP context diagram
+The WAP system interfaces with the PC for command handling and firmware upgrade.
+The sample manager is used to send commands and receive the responses.
+A log interface is convenient for logging during development.
+A status LED notifies the user of system activity.
+Sensors and motors are used to control the feeder and the door. The tray is detected via its
+sensors.
+This section briefly describes system behavior using flow charts from the design. It should clarify
+the sequence of operations (for example, movements) that can be observed by the operator.
+July 26, 2023, 715008839 Ver. 00
+Page 21
+--- Page 22 ---
+3.2.1 Initialization
+Figure 3–2: Initialization command flowchart
+The initialization command flowchart comprises three parts (marked by the dashed rectangles):
+1. Initializing SM, door, and feeder: red rectangle
+2. Detecting the drawers and trays and storing them in the SM: green rectangle
+3. Closing the door and restoring state of SM: blue rectangle
+1. Initializing: Before the command is initialized, the firmware checks that the SM is idle. After
+disabling the auto rotation and verifying that the SM is idle again, the door is opened before
+the feeder is retracted. A reference position is then retrieved from the SM and stored for
+use during the extraction or insertion of the tray. If that succeeds, the SM is commanded to
+rotate the plate so that tray 0 is available for the portal.
+2. Detecting drawers: The feeder is expanded until it stagnates. If the expansion reaches 175
+mm, it implies that the feeder is fully expanded. If the drawer was not detected during
+expansion, it means that it was already present in the SM. In that case, the feeder is
+retracted to collect the drawer so a (possible) tray can be detected when the feeder is
+expanding again. If a drawer was detected during expansion, the SM plate is rotated to 10
+degrees, and the feeder is retracted to leave the drawer in the SM.
+If the feeder is expanded between 70 and 80 mm, a drawer is present in the SM and in
+the portal. In that case, the portal retracts the feeder and continues this procedure with tray
+July 26, 2023, 715008839 Ver. 00
+Page 22
+--- Page 23 ---
+1 of the SM. If the feeder does not reach a distance of more than 170 mm, something is
+blocking the feeder, and an error is generated.
+The previous procedure is repeated for SM tray 1. If required, it will be repeated for SM
+tray 0. When both SM positions are filled, the door can be closed.
+3. Closing the door: The door is closed and, finally, the auto rotation is re-enabled. This
+finishes the operation. With the complete message, this command returns the status of the
+SM rotary tray positions.
+Valid states of the rotary tray positions are:
+• Unknown (typically caused by an error) : Should not happen unless something is wrong
+• Empty (typically caused by the removal of a drawer from the rotary tray) : Should not happen
+unless someone removed a drawer from the system
+• DrawerOnly (only a drawer is present)
+• DrawerAndTray (a drawer with a sample plate is present)
+Example completed message:
+Complete(12, Initialize, DrawerOnly, DrawerAndTray)
+This message indicates tray position 0 has a drawer located in it, while position 1 has a drawer
+with a plate.
+July 26, 2023, 715008839 Ver. 00
+Page 23
+--- Page 24 ---
+3.2.2 Extract
+Figure 3–3: Extract command flowchart
+July 26, 2023, 715008839 Ver. 00
+Page 24
+--- Page 25 ---
+Initially, the firmware checks if the rotary tray position in the SM has a drawer in it. It is based
+on the internal state of the firmware (performed as during initializing and updated after each
+Insert/Extract command). If the state is not correct, an error is activated. If the state is correct,
+the firmware checks if the SM is available and in idle state; therefore, it sends the pre-transfer
+commands to the SM.
+After sending the pre-transfer commands, the system moves the SM rotary tray to the correct
+position and then requests the actual rotary tray angle. If the angle is not equal to the desired
+angle, it generates an error. Otherwise, the system waits for the SM to become idle, and the door
+is opened to extract a tray.
+The feeder without a tray is expanded to the SM. During expansion, the system checks if there
+is already a tray or drawer present. If no tray or drawer is present, the feeder is extracted to the
+calibrated distance and then retracted. During retraction, the system will detect if a tray or drawer
+is present. If not, an error is generated.
+After door closing, the post-transfer commands are sent to the SM and the system waits for
+the SM to become idle. After closing, this operation is finished and the firmware updates the
+internal SM rotary position state accordingly (marks the specified tray as empty). The "Complete
+message" command returns the status of the collected drawer.
+Valid states of the drawer are:
+• DrawerOnly
+• DrawerAndTray
+Example completed message:
+Complete(12, Extract, DrawerOnly)
+July 26, 2023, 715008839 Ver. 00
+Page 25
+--- Page 26 ---
+3.2.3 Insert
+Figure 3–4: Insert command flowchart
+July 26, 2023, 715008839 Ver. 00
+Page 26
+--- Page 27 ---
+Initially, the firmware checks if the rotary tray position in the SM has no drawer in it. It is based on
+the internal state of the firmware (as filled during initializing and updated after each Insert/Extract
+command). If the state is not correct, an error is activated. If the state is correct, the firmware
+checks if the SM is available and idle, sending pre-transfer commands to the SM. After sending
+the pre-transfer commands, the system moves the SM rotary tray to the correct position, and
+then it requests the actual rotary tray angle. If the angle is not equal to the desired angle, an error
+is activated. Otherwise, the system waits for the SM to become idle and the door opens to insert
+a tray.
+The feeder with tray is expanded to the SM. During the expansion the system checks if a tray
+or drawer is present. If not, an error is raised; otherwise, the feeder expands to the calibrated
+distance. After homing the z axis again, the tray rotates 10 degrees to decouple the magnet from
+the drawer.
+After waiting for the SM to become idle, the feeder is retracted. During retraction, the system
+checks if no tray or drawer is present. After door closing, the post-transfer commands are sent to
+the SM and the system waits for the SM to become idle. After closing, this operation is finished
+and the firmware updates the internal SM rotary position state accordingly (marks the specified
+tray as empty).
+July 26, 2023, 715008839 Ver. 00
+Page 27

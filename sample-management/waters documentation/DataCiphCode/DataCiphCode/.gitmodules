@@ -1,0 +1,3 @@
+[submodule "Submodules/CommonSTF"]
+	path = Submodules/CommonSTF
+	url = https://egeo-infos.visualstudio.com/_git/DataCiph_Common
