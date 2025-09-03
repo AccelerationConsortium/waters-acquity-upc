@@ -2,9 +2,15 @@
 
 # Documentation files (proprietary)
 *.pdf
+*_extracted.txt
 docs/proprietary/
 documentation/
 waters_docs/
+waters\ documentation/
+*/docs/proprietary/
+*/waters\ documentation/
+**/*_extracted.txt
+**/*.pdf
 
 # Python compiled files
 __pycache__/
@@ -186,3 +192,10 @@ calibration_data/
 # Waters proprietary files
 waters_proprietary/
 proprietary_docs/
+**/*Guide*.pdf
+**/*Specification*.pdf
+**/*Manual*.pdf
+*.docx
+*.doc
+**/*.docx
+**/*.doc
