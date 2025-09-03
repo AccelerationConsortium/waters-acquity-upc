@@ -199,3 +199,8 @@ proprietary_docs/
 *.doc
 **/*.docx
 **/*.doc
+
+# Sample management - start fresh (ignore all current contents)
+sample-management/*
+!sample-management/waters\ documentation/
+!sample-management/README.md
