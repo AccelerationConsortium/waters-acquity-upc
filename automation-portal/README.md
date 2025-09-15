@@ -60,10 +60,10 @@ PyPDF2>=3.0.0          # PDF documentation extraction
 
 ### Basic Connection Test
 ```python
-from waters_acquity_driver import WatersAcquityDriver
+from automation_portal_driver import AutomationPortalDriver
 
 # Create driver instance (default: COM4, 38400 baud)
-driver = WatersAcquityDriver()
+driver = AutomationPortalDriver()
 
 try:
     # Connect to instrument
@@ -85,9 +85,9 @@ finally:
 
 ### Sample Handling Workflow
 ```python
-from waters_acquity_driver import WatersAcquityDriver
+from automation_portal_driver import AutomationPortalDriver
 
-driver = WatersAcquityDriver(port='COM4', baudrate=38400)
+driver = AutomationPortalDriver(port='COM4', baudrate=38400)
 
 try:
     driver.connect()
@@ -132,7 +132,7 @@ COMMAND_TERMINATOR = '\r' (Carriage Return)
 
 ### TCP/IP Communication
 ```python
-driver = WatersAcquityDriver(
+driver = AutomationPortalDriver(
     host='192.168.1.100',
     tcp_port=34567,
     comm_mode='tcp'
@@ -250,7 +250,7 @@ for port in ports:
     print(f"{port.device}: {port.description}")
 
 # Test basic connectivity
-driver = WatersAcquityDriver(port='COM4', baudrate=38400)
+driver = AutomationPortalDriver(port='COM4', baudrate=38400)
 if driver.connect():
     print("✅ Connection successful")
     status = driver.portal_get_status()
@@ -283,7 +283,7 @@ if not result['success']:
 
 ```
 waters-acquity-upc/
-├── waters_acquity_driver.py      # Main driver implementation
+├── automation_portal_driver.py      # Main driver implementation
 ├── config.py                     # Configuration and constants  
 ├── example_usage.py               # Usage examples and demos
 ├── demo.py                       # Working demonstration script
@@ -365,10 +365,10 @@ Waters proprietary documentation should be placed in the `docs/proprietary/` fol
 ## Quick Start
 
 ```python
-from waters_acquity_driver import WatersAcquityDriver
+from automation_portal_driver import AutomationPortalDriver
 
 # Serial communication
-with WatersAcquityDriver(port='COM1', comm_mode='serial') as driver:
+with AutomationPortalDriver(port='COM1', comm_mode='serial') as driver:
     # Module-specific parameter control
     driver.set_flow_rate(1.0, module="BSM")    # Binary Solvent Manager
     driver.set_temperature(40.0, module="CM")  # Column Manager
@@ -393,7 +393,7 @@ with WatersAcquityDriver(port='COM1', comm_mode='serial') as driver:
     driver.stop_run()
 
 # TCP/IP communication (for networked instruments)
-with WatersAcquityDriver(host='192.168.1.100', tcp_port=34567, comm_mode='tcp') as driver:
+with AutomationPortalDriver(host='192.168.1.100', tcp_port=34567, comm_mode='tcp') as driver:
     # Same API works for both communication modes
     driver.prime_pump("BSM", "A")  # Prime solvent A
     driver.calibrate_detector("TUV")  # Calibrate UV detector
@@ -401,12 +401,12 @@ with WatersAcquityDriver(host='192.168.1.100', tcp_port=34567, comm_mode='tcp') 
 
 ## Documentation
 
-### Class: WatersAcquityDriver
+### Class: AutomationPortalDriver
 
 #### Initialization
 ```python
 # Serial communication
-driver = WatersAcquityDriver(
+driver = AutomationPortalDriver(
     port='COM1',              # Serial port
     baudrate=9600,           # Communication baudrate
     timeout=5.0,             # Timeout in seconds
@@ -414,7 +414,7 @@ driver = WatersAcquityDriver(
 )
 
 # TCP/IP communication
-driver = WatersAcquityDriver(
+driver = AutomationPortalDriver(
     host='192.168.1.100',    # Instrument IP address
     tcp_port=34567,          # TCP port
     timeout=10.0,            # Network timeout
@@ -470,9 +470,9 @@ MIN_PRESSURE = 0.0
 
 ### Basic Connection Test
 ```python
-from waters_acquity_driver import WatersAcquityDriver
+from automation_portal_driver import AutomationPortalDriver
 
-driver = WatersAcquityDriver(port='COM1')
+driver = AutomationPortalDriver(port='COM1')
 if driver.connect():
     print("Connected successfully!")
     status = driver.get_status()
@@ -482,7 +482,7 @@ if driver.connect():
 
 ### Parameter Setting
 ```python
-with WatersAcquityDriver() as driver:
+with AutomationPortalDriver() as driver:
     # Set operating parameters
     driver.set_flow_rate(1.5)    # 1.5 mL/min
     driver.set_temperature(45.0)  # 45°C
@@ -494,7 +494,7 @@ with WatersAcquityDriver() as driver:
 
 ### Method Run with Data Collection
 ```python
-with WatersAcquityDriver() as driver:
+with AutomationPortalDriver() as driver:
     # Set initial conditions
     driver.set_flow_rate(1.0)
     driver.set_temperature(40.0)
@@ -534,13 +534,13 @@ python example_usage.py
 The driver includes comprehensive error handling:
 
 ```python
-from waters_acquity_driver import WatersAcquityDriver, WatersAcquityError
+from automation_portal_driver import AutomationPortalDriver, AutomationPortalError
 
 try:
-    with WatersAcquityDriver() as driver:
+    with AutomationPortalDriver() as driver:
         driver.set_flow_rate(1.0)
         driver.start_run("my_method")
-except WatersAcquityError as e:
+except AutomationPortalError as e:
     print(f"Waters Acquity error: {e}")
 except Exception as e:
     print(f"Unexpected error: {e}")
@@ -550,10 +550,10 @@ except Exception as e:
 
 ### Adding New Commands
 
-To add new Waters Acquity commands, extend the `WatersAcquityDriver` class:
+To add new Waters Acquity commands, extend the `AutomationPortalDriver` class:
 
 ```python
-class ExtendedWatersDriver(WatersAcquityDriver):
+class ExtendedWatersDriver(AutomationPortalDriver):
     def set_pressure(self, pressure):
         """Set system pressure."""
         try:

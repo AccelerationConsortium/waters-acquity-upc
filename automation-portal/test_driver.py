@@ -11,7 +11,7 @@ import logging
 # Add the current directory to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from waters_acquity_driver import WatersAcquityDriver, WatersAcquityError
+from automation_portal_driver import AutomationPortalDriver, AutomationPortalError
 import config
 
 
@@ -21,7 +21,7 @@ def test_portal_commands():
     print("\n=== Testing Waters Automation Portal Commands ===")
     
     # Mock driver for testing portal command parsing
-    class MockPortalDriver(WatersAcquityDriver):
+    class MockPortalDriver(AutomationPortalDriver):
         def __init__(self):
             # Initialize without actual connection
             self.is_connected = True
@@ -174,12 +174,12 @@ def test_portal_configuration():
     return True
 
 
-class TestWatersAcquityDriver(unittest.TestCase):
-    """Test cases for WatersAcquityDriver class."""
+class TestAutomationPortalDriver(unittest.TestCase):
+    """Test cases for AutomationPortalDriver class."""
     
     def setUp(self):
         """Set up test fixtures."""
-        self.driver = WatersAcquityDriver(
+        self.driver = AutomationPortalDriver(
             port='COM_TEST',
             baudrate=9600,
             timeout=5.0
@@ -238,7 +238,7 @@ class TestWatersAcquityDriver(unittest.TestCase):
     
     def test_send_command_without_connection(self):
         """Test sending command without connection raises error."""
-        with self.assertRaises(WatersAcquityError):
+        with self.assertRaises(AutomationPortalError):
             self.driver.send_command("TEST")
     
     @patch('serial.Serial')
@@ -338,7 +338,7 @@ class TestWatersAcquityDriver(unittest.TestCase):
         mock_connection = Mock()
         mock_serial.return_value = mock_connection
         
-        with WatersAcquityDriver() as driver:
+        with AutomationPortalDriver() as driver:
             self.assertTrue(driver.is_connected)
         
         # Should be disconnected after exiting context
@@ -349,7 +349,7 @@ class TestWatersAcquityDriver(unittest.TestCase):
         print("\n=== Testing Waters Automation Portal Commands ===")
         
         # Mock driver for testing portal command parsing
-        class MockPortalDriver(WatersAcquityDriver):
+        class MockPortalDriver(AutomationPortalDriver):
             def __init__(self):
                 # Initialize without actual connection
                 self.is_connected = True

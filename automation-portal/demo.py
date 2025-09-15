@@ -4,7 +4,7 @@ Waters Acquity UPC Driver - Working Demo
 Demonstrates successful communication with Waters Automation Portal instrument
 """
 
-from waters_acquity_driver import WatersAcquityDriver
+from automation_portal_driver import AutomationPortalDriver
 import config
 
 def demo_working_connection():
@@ -12,7 +12,7 @@ def demo_working_connection():
     print("=== Waters Acquity UPC Driver Demo ===")
     
     # Create driver instance
-    driver = WatersAcquityDriver()
+    driver = AutomationPortalDriver()
     
     try:
         # Connect to instrument
