@@ -1,6 +1,6 @@
 import serial
 import time
-from waters_acquity_driver import WatersAcquityDriver
+from automation_portal_driver import AutomationPortalDriver
 
 def test_detailed_getstatus():
     """Test GetStatus in detail to understand the response pattern"""
@@ -31,7 +31,7 @@ def test_detailed_getstatus():
     print("\n=== DRIVER ANALYSIS ===")
     
     try:
-        driver = WatersAcquityDriver(port='COM4', baudrate=38400)
+        driver = AutomationPortalDriver(port='COM4', baudrate=38400)
         driver.connect()
         
         print("2. Testing send_portal_command directly...")

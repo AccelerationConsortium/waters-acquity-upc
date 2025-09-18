@@ -50,7 +50,7 @@ Based on the available documentation:
 
 1. Review the protocol specification PDF in `proprietary/`
 2. Identify the exact command syntax for your system
-3. Update the placeholder commands in `waters_acquity_driver.py`
+3. Update the placeholder commands in `automation_portal_driver.py`
 4. Test the implementation with your Waters Acquity system
 
 ## Quick Reference

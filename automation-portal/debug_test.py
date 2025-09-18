@@ -1,6 +1,6 @@
 import serial
 import time
-from waters_acquity_driver import WatersAcquityDriver
+from automation_portal_driver import AutomationPortalDriver
 
 def test_getstatus_only():
     """Test just the GetStatus command to see what's happening"""
@@ -27,7 +27,7 @@ def test_getstatus_only():
     
     try:
         # Driver test
-        driver = WatersAcquityDriver(port='COM4', baudrate=38400)
+        driver = AutomationPortalDriver(port='COM4', baudrate=38400)
         driver.connect()
         
         print("Testing driver portal_get_status()...")
