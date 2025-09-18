@@ -1,637 +1,208 @@
-# Waters Acquity UPC Python Driver
+# Waters Automation Portal Driver
 
-A production-ready Python driver for controlling Waters Acquity Ultra Performance Convergence Chromatography (UPC) systems, implementing the official **Waters Automation Portal PC Protocol Specification (715008839)** for automated sample handling operations.
+A Python driver for controlling Waters Automation Portal sample transfer operations via serial communication. This driver provides a clean interface for automated sample handling in Waters Acquity UPC systems.
 
-## 🚀 Key Features
+## Overview
 
-### Waters Automation Portal Protocol Implementation
-- **Complete implementation** of all 6 core Waters automation commands:
-  - `GetStatus` - Retrieve system mode, movement state, and sensor status
-  - `Initialize` - Initialize system components and detect tray positions  
-  - `Extract(position)` - Extract drawer from sample manager position
-  - `Insert(position)` - Insert drawer into sample manager position
-  - `ReportVersion` - Get firmware and hardware version information
-  - `ResetSystem` - Reset automation portal system
+The Waters Automation Portal Driver enables programmatic control of sample transfer operations including:
+- Sample extraction from instrument positions
+- Sample insertion to instrument positions  
+- System initialization and status monitoring
+- Error handling and recovery
 
-### Comprehensive Driver Architecture
-- **Dual Communication Support**: RS-232 serial and TCP/IP networking
-- **Robust Error Handling**: All 30 Waters-specific error codes implemented
-- **Response Parsing**: Complete parsing of Waters protocol responses
-- **Status Monitoring**: Real-time system state and sensor monitoring
-- **Workflow Automation**: High-level extract-insert cycle operations
+## Installation
 
-### System Capabilities
-- **Hardware Status Monitoring**: Door/Feeder/Drawer detection with real-time feedback
-- **Network Integration**: IP address and MAC address reporting
-- **Error Recovery**: Automatic retry logic with exponential backoff
-- **Production Ready**: Comprehensive logging and diagnostic capabilities
-
-## 📋 System Requirements
-
-- **Python**: 3.7+ with serial port access
-- **Hardware**: Waters Acquity UPC with Automation Portal
-- **Operating System**: Windows/Linux
-- **Network**: Ethernet connection (for IP-based monitoring)
-- **Permissions**: Serial port access (default: COM4 at 38400 baud)
-
-## 🛠 Installation
-
-### Quick Install
-```bash
-git clone https://github.com/kelvinchow23/waters-acquity-upc.git
-cd waters-acquity-upc
-pip install -r requirements.txt
-```
-
-### Package Install
-```bash
-pip install -e .
-```
-
-### Dependencies
-```
-pyserial>=3.5          # Serial communication
-pandas>=1.3.0          # Data manipulation  
-numpy>=1.21.0          # Numerical operations
-PyPDF2>=3.0.0          # PDF documentation extraction
-```
-
-## 🚦 Quick Start
-
-### Basic Connection Test
-```python
-from automation_portal_driver import AutomationPortalDriver
-
-# Create driver instance (default: COM4, 38400 baud)
-driver = AutomationPortalDriver()
-
-try:
-    # Connect to instrument
-    if driver.connect():
-        print("✅ Connected successfully!")
-        
-        # Get system status
-        status = driver.portal_get_status()
-        print(f"System State: {status['system_state']}")
-        print(f"Door Status: {status['door_status']}")
-        print(f"MAC Address: {status['mac_address']}")
-        
-    else:
-        print("❌ Connection failed")
-        
-finally:
-    driver.disconnect()
-```
-
-### Sample Handling Workflow
-```python
-from automation_portal_driver import AutomationPortalDriver
-
-driver = AutomationPortalDriver(port='COM4', baudrate=38400)
-
-try:
-    driver.connect()
-    
-    # Initialize system (if needed)
-    init_result = driver.portal_initialize()
-    
-    # Check system status
-    status = driver.portal_get_status()
-    if status['system_state'] == 'OPERATIONAL':
-        
-        # Extract drawer from position 1
-        extract_result = driver.portal_extract(1)
-        if extract_result['success']:
-            print("✅ Sample extracted successfully")
-            
-            # Wait for operation to complete
-            driver.portal_wait_for_idle(timeout=60)
-            
-            # Insert to position 0
-            insert_result = driver.portal_insert(0)
-            if insert_result['success']:
-                print("✅ Sample inserted successfully")
-        
-finally:
-    driver.disconnect()
-```
-
-## 🔧 Configuration
-
-### Serial Communication (Default)
-```python
-# Default settings (configured for Waters Automation Portal)
-PORT = 'COM4'
-BAUDRATE = 38400
-DATA_BITS = 8
-PARITY = 'N' (None)
-STOP_BITS = 1
-TIMEOUT = 2 seconds
-COMMAND_TERMINATOR = '\r' (Carriage Return)
-```
-
-### TCP/IP Communication
-```python
-driver = AutomationPortalDriver(
-    host='192.168.1.100',
-    tcp_port=34567,
-    comm_mode='tcp'
-)
-```
-
-## 📖 API Reference
-
-### Core Portal Commands
-
-#### System Status and Control
-```python
-# Get comprehensive system status
-status = driver.portal_get_status()
-# Returns: system_state, mode, door_status, feeder_status, network_info, etc.
-
-# Get instrument version information
-version = driver.portal_report_version()
-# Returns: firmware version, hardware info
-
-# Initialize automation portal
-init_result = driver.portal_initialize()
-# Returns: success status and sequence number
-
-# Reset system (use with caution)
-reset_result = driver.portal_reset_system()
-```
-
-#### Sample Handling Operations
-```python
-# Extract drawer from position (0 or 1)
-extract_result = driver.portal_extract(position=1)
-
-# Insert drawer to position (0 or 1)  
-insert_result = driver.portal_insert(position=0)
-
-# Wait for operation completion
-driver.portal_wait_for_idle(timeout=60)
-
-# Complete transfer cycle
-cycle_result = driver.portal_extract_insert_cycle(from_pos=1, to_pos=0)
-```
-
-#### Status Monitoring
-```python
-# Check if system is ready for operations
-is_ready = driver.portal_is_system_ready()
-
-# Get specific status components
-system_mode = driver.portal_get_system_mode()  # OPERATIONAL/UNINIT/ERROR
-door_status = driver.portal_get_door_status()  # Open/Closed/Intermediate
-feeder_status = driver.portal_get_feeder_status()  # In SM/Retracted/etc
-```
-
-### Response Format
-
-All portal commands return dictionaries with consistent structure:
-
-```python
-{
-    'success': True/False,           # Operation success status
-    'status': 'completed',           # Waters response status
-    'sequence_number': 123,          # Command sequence number
-    'data': [...],                   # Response data (if any)
-    'error_code': 0,                 # Error code (if error)
-    'error_description': 'message'   # Error description (if error)
-}
-```
-
-### System Status Fields
-
-```python
-status = driver.portal_get_status()
-{
-    'success': True,
-    'system_state': 'OPERATIONAL',              # System ready state
-    'mode': 'Initialize',                       # Current operation mode  
-    'status': 'Idle',                          # Movement status
-    'drawer_status': 'NoDrawerNoTray',         # Drawer detection
-    'door_status': 'DoorClosed',               # Door position
-    'feeder_status': 'FeederFullyRetracted',   # Feeder position
-    'network_info': '172.16.0.4',             # IP address
-    'mac_address': '00:00:C4:06:01:67',        # Hardware MAC
-    'response_status': 'completed'              # Waters response type
-}
-```
-
-## 🧪 Testing
-
-### Run Built-in Tests
-```bash
-python test_driver.py
-```
-
-### Demo Script
-```bash
-python demo.py
-```
-
-### Example Usage
-```bash
-python example_usage.py
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-#### Connection Problems
-```python
-# Check COM port
-import serial.tools.list_ports
-ports = serial.tools.list_ports.comports()
-for port in ports:
-    print(f"{port.device}: {port.description}")
-
-# Test basic connectivity
-driver = AutomationPortalDriver(port='COM4', baudrate=38400)
-if driver.connect():
-    print("✅ Connection successful")
-    status = driver.portal_get_status()
-    print(f"System: {status['system_state']}")
-else:
-    print("❌ Connection failed - check port and cables")
-```
-
-#### Error Responses
-Waters instruments return specific error codes:
-- **Error Code 1**: Unknown command
-- **Error Code 4**: Unavailable command for this system mode
-- **Error Code 8**: Hardware malfunction
-
-```python
-result = driver.portal_extract(1)
-if not result['success']:
-    print(f"Error {result.get('error_code', 'Unknown')}: {result.get('error_description', 'No description')}")
-```
-
-#### Status Interpretation
-- **OPERATIONAL**: System ready for extract/insert operations
-- **UNINIT**: System powered-on but not initialized
-- **ERROR**: Problem detected during execution
-- **Idle**: Not currently performing operations
-- **DoorClosed**: Door properly secured
-- **FeederFullyRetracted**: Feeder in safe position
-
-## 📁 Project Structure
-
-```
-waters-acquity-upc/
-├── automation_portal_driver.py      # Main driver implementation
-├── config.py                     # Configuration and constants  
-├── example_usage.py               # Usage examples and demos
-├── demo.py                       # Working demonstration script
-├── test_driver.py                # Comprehensive test suite
-├── data_analysis.py              # Data processing utilities
-├── pdf_extractor.py              # Documentation extraction tool
-├── requirements.txt              # Python dependencies
-├── setup.py                      # Package installation
-├── README.md                     # This documentation
-└── docs/
-    ├── documentation_index.md     # Documentation overview
-    └── proprietary/               # Waters proprietary documentation
-        ├── 715008839 Automation Portal PC Protocol Specification.pdf
-        ├── 715008839 Automation Portal PC Protocol Specification_extracted.txt
-        ├── 715008535v00 Sample Transfer File Guide.pdf
-        └── 715008535v00 Sample Transfer File Guide_extracted.txt
-```
-
-## 🔒 Waters Protocol Compliance
-
-This driver implements the exact Waters Automation Portal PC Protocol Specification:
-
-### Communication Protocol
-- **Serial**: RS-232, 38400 baud, 8N1, no flow control
-- **Command Format**: Waters-specific protocol with sequence numbers
-- **Response Format**: `Completed(seq, command, data...)` or `Error(seq, command, code, desc)`
-- **Timeouts**: Command-specific (5s for status, 120s for initialization)
-
-### Supported Hardware
-- **Waters Acquity UPC** systems with Automation Portal
-- **Sample Manager**: Rotary tray positions 0 and 1
-- **Door Control**: Automated open/close with sensor feedback
-- **Chain Feeder**: Automated drawer extraction/insertion
-- **Network Interface**: Ethernet connectivity with DHCP support
-
-### Error Handling
-- **30 Specific Error Codes**: From command parsing to hardware malfunctions
-- **Automatic Retry**: Configurable retry logic for transient errors
-- **Recovery Procedures**: Initialization and reset capabilities
-- **Comprehensive Logging**: Detailed logging for troubleshooting
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/improvement`)
-3. Commit your changes (`git commit -am 'Add new feature'`)
-4. Push to the branch (`git push origin feature/improvement`)
-5. Create a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## ⚠️ Disclaimer
-
-This is an independent implementation based on Waters public documentation. Use with proper safety precautions and verify all operations with your specific instrument configuration.
-
-## 🏆 Production Status
-
-**✅ READY FOR PRODUCTION USE**
-
-This driver has been:
-- ✅ Tested with actual Waters Acquity UPC hardware
-- ✅ Verified against official Waters protocol specification
-- ✅ Implemented with comprehensive error handling
-- ✅ Designed for reliable automation workflows
-- ✅ Documented with complete API reference
-
-The driver successfully communicates with Waters instruments and provides a solid foundation for automated sample handling operations.
-
----
-
-**Need Help?** Check the [troubleshooting section](#-troubleshooting) or create an issue on GitHub.
-
-## Documentation
-
-Waters proprietary documentation should be placed in the `docs/proprietary/` folder. This folder is excluded from git tracking to protect proprietary information. Use the provided `copy_waters_docs.bat` script to automatically copy files from your Waters documentation folder.
+1. **Clone or download** this repository
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Ensure hardware connection**: Connect Waters Automation Portal via RS232 to COM4
 
 ## Quick Start
 
+### Interactive Menu (Recommended)
+For easy operation, use the interactive command-line menu:
+
+```bash
+python automation_menu.py
+```
+
+This provides a user-friendly interface with guided operations:
+1. Connect to Automation Portal
+2. Check system status
+3. Initialize system (if needed)
+4. Extract/Insert samples
+5. Monitor operations
+
+### Programmatic Usage
+
 ```python
 from automation_portal_driver import AutomationPortalDriver
 
-# Serial communication
-with AutomationPortalDriver(port='COM1', comm_mode='serial') as driver:
-    # Module-specific parameter control
-    driver.set_flow_rate(1.0, module="BSM")    # Binary Solvent Manager
-    driver.set_temperature(40.0, module="CM")  # Column Manager
-    driver.set_injection_volume(5.0, module="SM")  # Sample Manager
-    
-    # Method management
-    methods = driver.get_method_list()
-    if methods:
-        driver.load_method(methods[0])
-        driver.start_run(methods[0])
-    
-    # Multi-detector data collection
-    tuv_data = driver.get_data("TUV")  # UV detector
-    frl_data = driver.get_data("FLR")  # Fluorescence detector
-    
-    # System monitoring
-    status = driver.get_status()
-    print(f"System: {status['status_text']}")
-    print(f"Pressure: {status['pressure']} bar")
-    print(f"Temperature: {status['temperature']} °C")
-    
-    driver.stop_run()
-
-# TCP/IP communication (for networked instruments)
-with AutomationPortalDriver(host='192.168.1.100', tcp_port=34567, comm_mode='tcp') as driver:
-    # Same API works for both communication modes
-    driver.prime_pump("BSM", "A")  # Prime solvent A
-    driver.calibrate_detector("TUV")  # Calibrate UV detector
-```
-
-## Documentation
-
-### Class: AutomationPortalDriver
-
-#### Initialization
-```python
-# Serial communication
-driver = AutomationPortalDriver(
-    port='COM1',              # Serial port
-    baudrate=9600,           # Communication baudrate
-    timeout=5.0,             # Timeout in seconds
-    comm_mode='serial'       # Communication mode
-)
-
-# TCP/IP communication
-driver = AutomationPortalDriver(
-    host='192.168.1.100',    # Instrument IP address
-    tcp_port=34567,          # TCP port
-    timeout=10.0,            # Network timeout
-    comm_mode='tcp'          # Communication mode
-)
-```
-
-#### Connection Management
-- `connect()`: Establish connection to the system
-- `disconnect()`: Close connection
-- Context manager support for automatic connection handling
-
-#### Module-Specific Control
-- `set_flow_rate(rate, module="BSM")`: Set flow rate for Binary Solvent Manager
-- `set_temperature(temp, module="CM")`: Set temperature for Column Manager
-- `set_injection_volume(vol, module="SM")`: Set volume for Sample Manager
-- `prime_pump(module="BSM", solvent="A")`: Prime pump with specified solvent
-- `calibrate_detector(detector="TUV")`: Calibrate specified detector
-
-#### Method Management
-- `load_method(path)`: Load method file into instrument
-- `get_method_list()`: Get list of available methods
-- `start_run(method_name)`: Start chromatography run with specified method
-- `stop_run()`: Stop current run
-- `abort_run()`: Abort current run immediately
-
-#### Data and Status
-- `get_status()`: Get comprehensive system status including module states
-- `get_data(detector, start_time, end_time)`: Retrieve data from specific detector
-- `send_command(command)`: Send raw command to system
-
-### Configuration
-
-System limits and defaults are defined in `config.py`:
-
-```python
-# Flow rate limits (mL/min)
-MAX_FLOW_RATE = 5.0
-MIN_FLOW_RATE = 0.1
-DEFAULT_FLOW_RATE = 1.0
-
-# Temperature limits (°C)
-MAX_TEMPERATURE = 80.0
-MIN_TEMPERATURE = 10.0
-DEFAULT_TEMPERATURE = 40.0
-
-# Pressure limits (bar)
-MAX_PRESSURE = 1000.0
-MIN_PRESSURE = 0.0
-```
-
-## Examples
-
-### Basic Connection Test
-```python
-from automation_portal_driver import AutomationPortalDriver
-
-driver = AutomationPortalDriver(port='COM1')
+# Create and connect
+driver = AutomationPortalDriver()
 if driver.connect():
-    print("Connected successfully!")
+    # Initialize system (required after reset/error)
+    driver.initialize()
+    
+    # Check status
     status = driver.get_status()
-    print(f"System status: {status}")
+    print(f"System: {status['system_state']}, Door: {status['door_status']}")
+    
+    # Extract sample from position 1 to loading station
+    if driver.extract_drawer(1):
+        print("Sample extracted successfully")
+    
+    # Insert sample from loading station to position 0
+    if driver.insert_drawer(0):
+        print("Sample inserted successfully")
+    
     driver.disconnect()
 ```
 
-### Parameter Setting
+## System States & Operations
+
+### System States
+- **UNINIT**: System needs initialization
+- **OPERATIONAL**: Ready for sample operations  
+- **ERROR**: Problem detected, requires initialization
+- **SERVICE**: Configuration mode (use web interface)
+
+### Required Workflow
+1. **Connect** to automation portal
+2. **Initialize** system (if not OPERATIONAL)
+3. **Verify** door is closed and system ready
+4. **Perform** sample transfer operations
+
+### Sample Positions
+- **Position 0**: Drawer 2 (instrument position)
+- **Position 1**: Drawer 1 (instrument position)
+- **Loading Station**: External position for manual sample placement
+
+## Configuration
+
+### Hardware Settings (config.py)
 ```python
-with AutomationPortalDriver() as driver:
-    # Set operating parameters
-    driver.set_flow_rate(1.5)    # 1.5 mL/min
-    driver.set_temperature(45.0)  # 45°C
-    
-    # Verify settings
-    status = driver.get_status()
-    print(f"Current settings: {status}")
+DEFAULT_PORT = 'COM4'              # Serial port
+DEFAULT_BAUDRATE = 38400           # Communication speed
+DEFAULT_TIMEOUT = 5.0              # Command timeout
 ```
 
-### Method Run with Data Collection
-```python
-with AutomationPortalDriver() as driver:
-    # Set initial conditions
-    driver.set_flow_rate(1.0)
-    driver.set_temperature(40.0)
-    
-    # Start method
-    if driver.start_run("gradient_method"):
-        print("Method started successfully")
-        
-        # Monitor run (simplified)
-        for i in range(10):
-            time.sleep(30)  # Wait 30 seconds
-            status = driver.get_status()
-            print(f"Run status: {status}")
-            
-            # Collect data
-            data = driver.get_data()
-            # Process data as needed...
-        
-        # Stop run
-        driver.stop_run()
-```
-
-## Testing
-
-Run the test suite:
-```bash
-python test_driver.py
-```
-
-Run example usage:
-```bash
-python example_usage.py
-```
+### Communication Protocol
+- **Serial**: RS232, 8N1, no flow control
+- **Commands**: ASCII with CR terminator
+- **Responses**: Multi-line status with error codes
 
 ## Error Handling
 
-The driver includes comprehensive error handling:
+### Common Error Codes
+- **15**: Invalid tray number
+- **16**: Drawer/tray detection failure  
+- **28**: No drawer present at sample manager position
+- **27**: Drawer already present at position
 
+### Recovery Steps
+1. Check system status: `driver.get_status()`
+2. Initialize if needed: `driver.initialize()`
+3. Verify door is closed
+4. Retry operation
+
+### Error State Recovery
 ```python
-from automation_portal_driver import AutomationPortalDriver, AutomationPortalError
-
-try:
-    with AutomationPortalDriver() as driver:
-        driver.set_flow_rate(1.0)
-        driver.start_run("my_method")
-except AutomationPortalError as e:
-    print(f"Waters Acquity error: {e}")
-except Exception as e:
-    print(f"Unexpected error: {e}")
+# Check if system is in error state
+status = driver.get_status()
+if status['system_state'] == 'ERROR':
+    print("System in error state, initializing...")
+    driver.initialize()
 ```
 
-## Customization
+## API Reference
 
-### Adding New Commands
+### AutomationPortalDriver Class
 
-To add new Waters Acquity commands, extend the `AutomationPortalDriver` class:
+#### Connection Methods
+- `connect()` → bool: Connect to automation portal
+- `disconnect()`: Close connection
+- `is_connected` → bool: Check connection status
 
+#### System Operations  
+- `initialize()` → bool: Initialize system to OPERATIONAL state
+- `get_status()` → dict: Get current system status
+- `report_version()` → str: Get firmware version
+
+#### Sample Transfer
+- `extract_drawer(position: int)` → bool: Extract sample from position (0 or 1)
+- `insert_drawer(position: int)` → bool: Insert sample to position (0 or 1)
+
+#### Status Information
 ```python
-class ExtendedWatersDriver(AutomationPortalDriver):
-    def set_pressure(self, pressure):
-        """Set system pressure."""
-        try:
-            response = self.send_command(f"SET_PRESSURE {pressure}")
-            return "OK" in response.upper()
-        except Exception as e:
-            self.logger.error(f"Error setting pressure: {e}")
-            return False
+status = driver.get_status()
+# Returns:
+{
+    'system_state': 'OPERATIONAL',      # System mode
+    'door_status': 'DoorClosed',        # Door position  
+    'drawer_tray_status': 'NoDrawerNoTray',  # Sample presence
+    'mode': 'NoMovementCmd',            # Current operation
+    'status': 'Idle'                    # Movement state
+}
 ```
 
-### Custom Data Processing
+## Hardware Requirements
 
-```python
-def process_chromatography_data(data):
-    """Custom data processing function."""
-    # Apply smoothing
-    data['smoothed_signal'] = data['signal'].rolling(window=5).mean()
-    
-    # Find peaks
-    from scipy.signal import find_peaks
-    peaks, _ = find_peaks(data['smoothed_signal'], height=0.1)
-    
-    return data, peaks
+- **Waters Automation Portal** with sample manager
+- **RS232 connection** to Windows PC (COM4)
+- **Python 3.7+** with pyserial
+- **Windows operating system**
+
+## Safety Considerations
+
+- **Always initialize** system after reset or error
+- **Verify door is closed** before operations
+- **Check system status** before sample transfers
+- **Handle errors gracefully** with proper recovery
+
+## Troubleshooting
+
+### Connection Issues
+```bash
+# Check if COM4 is available
+python -c "import serial; print(serial.Serial('COM4', 38400))"
 ```
 
-## Requirements
+### System Not Responding
+1. Check physical connections
+2. Verify COM port in Device Manager
+3. Restart automation portal hardware
+4. Re-run initialization
 
-- Python 3.7+
-- pyserial
-- numpy
-- pandas
-- logging (built-in)
-- datetime (built-in)
+### Sample Transfer Failures
+1. Verify correct tray positions (0 or 1)  
+2. Check that samples are properly loaded
+3. Ensure door is fully closed
+4. Initialize system if in error state
 
-## Notes
+## Files Structure
 
-### Important Customization Required
-
-This driver provides a **template framework** that needs to be customized for your specific Waters Acquity system. The current implementation includes:
-
-1. **Placeholder Commands**: Replace the example commands with actual Waters Acquity commands from your system documentation
-2. **Communication Protocol**: Verify and adjust the serial communication parameters
-3. **Response Parsing**: Implement proper parsing of system responses
-4. **Error Codes**: Add handling for specific Waters Acquity error codes
-
-### Next Steps
-
-1. **Obtain Documentation**: Get the Waters Acquity command reference manual
-2. **Replace Placeholders**: Update the `send_command()` calls with actual commands
-3. **Test with Hardware**: Test the driver with your actual Waters Acquity system
-4. **Validate Responses**: Ensure response parsing matches your system's output format
-
-### Example Command Mapping
-
-```python
-# Replace these placeholder commands with actual Waters commands:
-# self.send_command("START_RUN") -> actual start command
-# self.send_command("STOP_RUN") -> actual stop command  
-# self.send_command("SET_FLOW") -> actual flow rate command
-# self.send_command("SET_TEMP") -> actual temperature command
 ```
-
-## License
-
-This project is provided as-is for educational and development purposes.
+automation-portal/
+├── automation_menu.py              # Interactive command-line interface
+├── automation_portal_driver.py     # Core driver implementation  
+├── config.py                       # Configuration settings
+├── requirements.txt                # Python dependencies
+├── setup.py                        # Package installation
+├── README.md                       # This documentation
+└── docs/                          # Additional documentation
+```
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
+When modifying the driver:
+1. Test with actual hardware before committing
+2. Update configuration in `config.py` as needed
+3. Add error handling for new operations
+4. Update this README for new features
 
-## Support
+## License
 
-For questions or issues:
-1. Check the documentation
-2. Review the example usage
-3. Run the test suite to verify functionality
-4. Consult your Waters Acquity system documentation for specific commands
+See LICENSE file for details.

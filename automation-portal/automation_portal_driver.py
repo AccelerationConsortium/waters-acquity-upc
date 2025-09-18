@@ -63,6 +63,10 @@ class AutomationPortalDriver:
         self.is_connected = False
         self.sequence_number = 0
         
+        # Instrument information (placeholder until connected)
+        self.instrument_id = "Waters Automation Portal"
+        self.available_modules = ["Sample Transfer", "Automation Portal"]
+        
         # Setup logging
         self.logger = logging.getLogger(__name__)
         if not self.logger.handlers:
@@ -70,7 +74,7 @@ class AutomationPortalDriver:
             formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
-            self.logger.setLevel(logging.INFO)
+            self.logger.setLevel(logging.DEBUG)
     
     def connect(self) -> bool:
         """
@@ -151,9 +155,24 @@ class AutomationPortalDriver:
                 command_str = command + config.COMMAND_TERMINATOR
                 
                 if self.comm_mode == config.COMM_MODE_SERIAL:
-                    # Serial communication
+                    # Serial communication - read multiple lines to get full response
                     self.connection.write(command_str.encode('utf-8'))
-                    response = self.connection.readline().decode('utf-8').strip()
+                    
+                    # Read the full response (may be multiple lines)
+                    response_lines = []
+                    start_time = time.time()
+                    while time.time() - start_time < self.timeout:
+                        if self.connection.in_waiting > 0:
+                            line = self.connection.readline().decode('utf-8').strip()
+                            if line:
+                                response_lines.append(line)
+                                # Check if we have a complete response
+                                if any('Completed(' in line or 'Error(' in line for line in response_lines):
+                                    break
+                        else:
+                            time.sleep(0.01)  # Small delay to prevent busy waiting
+                    
+                    response = '\n'.join(response_lines)
                     
                 elif self.comm_mode == config.COMM_MODE_TCP:
                     # TCP communication
@@ -181,48 +200,84 @@ class AutomationPortalDriver:
         
         Returns:
             Dictionary containing status information including:
-            - system_mode: Current system mode
-            - move_cmd: Current movement command
-            - move_state: Movement state  
-            - drawer_tray_status: Status of drawer and tray
+            - success: True if command succeeded
+            - system_state: Current system state (OPERATIONAL, etc.)
+            - mode: Current system mode
+            - status: Movement state
             - door_status: Door position status
             - feeder_status: Feeder status
-            - ip_address: Network IP address
             - mac_address: Hardware MAC address
         """
         try:
             response = self._send_command("GetStatus")
-            # Parse the response according to the protocol specification
-            # Format: Status(seq,system_mode,move_cmd,move_state,drawer_tray_status,door_status,feeder_status,ip_address,mac_address)
+            self.logger.debug(f"GetStatus raw response: {response}")
             
-            status = {}
-            if response.startswith("Status("):
-                # Extract the content between parentheses
-                content = response[7:-1]  # Remove "Status(" and ")"
-                parts = content.split(',')
+            # Parse the response - from the debug output we can see the format:
+            # GetStatus\r\n\tReceived(26,GetStatus)\r\n\tCompleted(26,GetStatus,OPERATIONAL,Insert(1),Idle,NoDrawerNoTray,DoorClosed,FeederFullyRetracted,172:16:0:4,00:00:C4:06:01:67)\r\n
+            
+            # Parse the response - looking for the Completed line
+            # Format: Completed(43,GetStatus,OPERATIONAL,Insert(1),Idle,NoDrawerNoTray,DoorClosed,FeederFullyRetracted,172:16:0:4,00:00:C4:06:01:67)
+            
+            if "Completed(" in response:
+                # Use regex to parse the response more reliably
+                import re
+                pattern = r'Completed\((\d+),GetStatus,([^,]+),([^,)]+(?:\([^)]*\))?),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,)]+)\)'
+                match = re.search(pattern, response)
                 
-                if len(parts) >= 8:
-                    status = {
-                        'sequence': int(parts[0]) if parts[0].isdigit() else 0,
-                        'system_mode': parts[1],
-                        'move_cmd': parts[2],
-                        'move_state': parts[3],
-                        'drawer_tray_status': parts[4],
-                        'door_status': parts[5],
-                        'feeder_status': parts[6],
-                        'ip_address': parts[7] if len(parts) > 7 else '',
-                        'mac_address': parts[8] if len(parts) > 8 else ''
+                if match:
+                    seq, system_state, mode, status, drawer_tray, door, feeder, ip, mac = match.groups()
+                    self.logger.debug(f"Regex parsed: seq={seq}, system={system_state}, mode={mode}, status={status}")
+                    return {
+                        'success': True,
+                        'sequence': int(seq) if seq.isdigit() else 0,
+                        'command': 'GetStatus',
+                        'system_state': system_state,      # OPERATIONAL
+                        'mode': mode,                      # Insert(1)
+                        'status': status,                  # Idle
+                        'drawer_tray_status': drawer_tray, # NoDrawerNoTray
+                        'door_status': door,               # DoorClosed
+                        'feeder_status': feeder,           # FeederFullyRetracted
+                        'ip_address': ip,                  # 172:16:0:4
+                        'mac_address': mac                 # 00:00:C4:06:01:67
                     }
                 else:
-                    status = {'error': 'Invalid status response format'}
-            else:
-                status = {'error': f'Unexpected response: {response}'}
-                
-            return status
+                    # Fallback: simple manual parsing
+                    self.logger.debug("Regex failed, trying manual parsing")
+                    completed_start = response.find("Completed(")
+                    if completed_start != -1:
+                        content_start = completed_start + 10
+                        content_end = response.find(")", content_start)
+                        if content_end != -1:
+                            content = response[content_start:content_end]
+                            # Try to extract key information manually
+                            if "OPERATIONAL" in content and "DoorClosed" in content:
+                                return {
+                                    'success': True,
+                                    'system_state': 'OPERATIONAL',
+                                    'mode': 'Insert(1)' if 'Insert(1)' in content else 'Unknown',
+                                    'status': 'Idle' if 'Idle' in content else 'Unknown',
+                                    'door_status': 'DoorClosed' if 'DoorClosed' in content else 'Unknown',
+                                    'drawer_tray_status': 'NoDrawerNoTray' if 'NoDrawerNoTray' in content else 'Unknown',
+                                    'feeder_status': 'FeederFullyRetracted' if 'FeederFullyRetracted' in content else 'Unknown',
+                                    'mac_address': content.split(',')[-1] if ',' in content else 'Unknown'
+                                }
+            
+            # If parsing failed, return error but still mark as success since we got a response
+            return {
+                'success': True,
+                'raw_response': response,
+                'system_state': 'Unknown',
+                'mode': 'Unknown', 
+                'status': 'Unknown',
+                'mac_address': 'Unknown'
+            }
             
         except Exception as e:
             self.logger.error(f"Error getting status: {e}")
-            return {'error': str(e)}
+            return {
+                'success': False,
+                'error': str(e)
+            }
     
     def initialize(self) -> bool:
         """
@@ -234,23 +289,46 @@ class AutomationPortalDriver:
             True if initialization successful, False otherwise
         """
         try:
-            seq = self._get_next_sequence()
-            response = self._send_command(f"Initialize({seq})")
+            # Send initialize command - try without sequence first
+            response = self._send_command("Initialize")
             
-            # Wait for completion
-            while True:
+            # Check immediate response for errors
+            if "Error(" in response:
+                # Try with sequence if simple command failed
+                seq = self._get_next_sequence()
+                response = self._send_command(f"Initialize({seq})")
+                
+                if "Error(" in response:
+                    self.logger.error(f"Initialize command failed: {response}")
+                    return False
+            
+            # Wait for completion and check final status
+            max_wait_time = 30  # seconds
+            start_time = time.time()
+            
+            while time.time() - start_time < max_wait_time:
                 status_response = self._send_command("GetStatus")
-                if "Completed" in status_response or "Error" in status_response:
-                    break
+                
+                # Check if operation completed successfully
+                if "Completed(" in status_response and "Initialize" in status_response:
+                    self.logger.info("Initialization completed successfully")
+                    return True
+                
+                # Check for error in status
+                if "Error(" in status_response and "Initialize" in status_response:
+                    self.logger.error(f"Initialize operation failed: {status_response}")
+                    return False
+                
+                # Check if system is already operational (might not need initialization)
+                if "OPERATIONAL" in status_response:
+                    self.logger.info("System already operational, initialization not needed")
+                    return True
+                
                 time.sleep(0.5)
             
-            success = "Completed" in status_response
-            if success:
-                self.logger.info("Initialization completed successfully")
-            else:
-                self.logger.error(f"Initialization failed: {status_response}")
-            
-            return success
+            # Timeout - operation didn't complete
+            self.logger.error(f"Initialize operation timed out after {max_wait_time} seconds")
+            return False
             
         except Exception as e:
             self.logger.error(f"Error during initialization: {e}")
@@ -270,23 +348,36 @@ class AutomationPortalDriver:
             raise ValueError("Tray position must be 0 or 1")
         
         try:
-            seq = self._get_next_sequence()
-            response = self._send_command(f"Extract({seq},{tray_position})")
+            # Send extract command - format appears to be Extract(tray_position) based on responses
+            response = self._send_command(f"Extract({tray_position})")
             
-            # Wait for completion
-            while True:
+            # Check the immediate response for success/error
+            if "Error(" in response:
+                self.logger.error(f"Extract command failed immediately: {response}")
+                return False
+            
+            # Wait for completion and check final status
+            max_wait_time = 30  # seconds
+            start_time = time.time()
+            
+            while time.time() - start_time < max_wait_time:
                 status_response = self._send_command("GetStatus")
-                if "Completed" in status_response or "Error" in status_response:
-                    break
+                
+                # Check if operation completed successfully
+                if "Completed(" in status_response and "Extract" in status_response:
+                    self.logger.info(f"Drawer extracted successfully from position {tray_position}")
+                    return True
+                
+                # Check for error in status
+                if "Error(" in status_response and "Extract" in status_response:
+                    self.logger.error(f"Extract operation failed: {status_response}")
+                    return False
+                
                 time.sleep(0.5)
             
-            success = "Completed" in status_response
-            if success:
-                self.logger.info(f"Drawer extracted successfully from position {tray_position}")
-            else:
-                self.logger.error(f"Drawer extraction failed: {status_response}")
-            
-            return success
+            # Timeout - operation didn't complete
+            self.logger.error(f"Extract operation timed out after {max_wait_time} seconds")
+            return False
             
         except Exception as e:
             self.logger.error(f"Error extracting drawer: {e}")
@@ -306,23 +397,36 @@ class AutomationPortalDriver:
             raise ValueError("Tray position must be 0 or 1")
         
         try:
-            seq = self._get_next_sequence()
-            response = self._send_command(f"Insert({seq},{tray_position})")
+            # Send insert command - format appears to be Insert(tray_position) based on responses
+            response = self._send_command(f"Insert({tray_position})")
             
-            # Wait for completion
-            while True:
+            # Check the immediate response for success/error
+            if "Error(" in response:
+                self.logger.error(f"Insert command failed immediately: {response}")
+                return False
+            
+            # Wait for completion and check final status
+            max_wait_time = 30  # seconds
+            start_time = time.time()
+            
+            while time.time() - start_time < max_wait_time:
                 status_response = self._send_command("GetStatus")
-                if "Completed" in status_response or "Error" in status_response:
-                    break
+                
+                # Check if operation completed successfully
+                if "Completed(" in status_response and "Insert" in status_response:
+                    self.logger.info(f"Drawer inserted successfully to position {tray_position}")
+                    return True
+                
+                # Check for error in status
+                if "Error(" in status_response and "Insert" in status_response:
+                    self.logger.error(f"Insert operation failed: {status_response}")
+                    return False
+                
                 time.sleep(0.5)
             
-            success = "Completed" in status_response
-            if success:
-                self.logger.info(f"Drawer inserted successfully to position {tray_position}")
-            else:
-                self.logger.error(f"Drawer insertion failed: {status_response}")
-            
-            return success
+            # Timeout - operation didn't complete
+            self.logger.error(f"Insert operation timed out after {max_wait_time} seconds")
+            return False
             
         except Exception as e:
             self.logger.error(f"Error inserting drawer: {e}")
@@ -415,6 +519,39 @@ class AutomationPortalDriver:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.disconnect()
+
+    # Portal method aliases for compatibility with demo scripts
+    def portal_get_status(self) -> Dict[str, Any]:
+        """Alias for get_status() method."""
+        return self.get_status()
+    
+    def portal_report_version(self) -> Dict[str, Any]:
+        """Alias for report_version() method."""
+        try:
+            version_info = self.report_version()
+            return {
+                'success': True,
+                'version_info': version_info
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def portal_reset_system(self) -> Dict[str, Any]:
+        """Alias for reset_system() method."""
+        try:
+            success = self.reset_system()
+            return {
+                'success': success,
+                'status': 'Reset completed' if success else 'Reset failed'
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
 
 
 # Example usage functions

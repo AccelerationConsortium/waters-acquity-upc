@@ -150,7 +150,10 @@ dmypy.json
 # Configuration files with sensitive data
 config_local.py
 secrets.ini
+secrets.cfg
 credentials.json
+**/secrets.ini
+**/credentials.*
 
 # Log files
 *.log
